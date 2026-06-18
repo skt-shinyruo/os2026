@@ -3,7 +3,45 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdbool.h>
+#include <sys/types.h>
 #include <unistd.h>
+
+#define COMM_LEN 256
+
+typedef struct {
+    bool show_pids;
+    bool numeric_sort;
+} Options;
+
+typedef struct Process Process;
+
+struct Process {
+    pid_t pid;
+    pid_t ppid;
+    char comm[COMM_LEN];
+    Process **children;
+    size_t child_count;
+    size_t child_capacity;
+};
+
+typedef struct {
+    Process *items;
+    size_t count;
+    size_t capacity;
+} ProcessList;
+
+int parse_options(int argc, char *argv[], Options *options);
+void print_version(void);
+void print_usage(FILE *out, const char *program);
+int collect_processes(ProcessList *processes);
+int add_process(ProcessList *processes, pid_t pid, pid_t ppid, const char *comm);
+Process *find_process(ProcessList *processes, pid_t pid);
+int build_tree(ProcessList *processes);
+void sort_children(ProcessList *processes);
+Process *find_root(ProcessList *processes);
+void print_tree(const Process *root, const Options *options, int depth);
+void free_processes(ProcessList *processes);
 
 static int read_comm(pid_t pid, char *buf, size_t n) {
     char path[64];
@@ -31,7 +69,60 @@ static int get_ppid_from_stat(pid_t pid, pid_t *ppid_out) {
     return 0;
 }
 
-int main(void) {
+int parse_options(int argc, char *argv[], Options *options) {
+    /* TODO: 实现命令行参数解析。 */
+    return 0;
+}
+
+void print_version(void) {
+    /* TODO: 打印版本信息。 */
+}
+
+void print_usage(FILE *out, const char *program) {
+    /* TODO: 打印用法或错误提示。 */
+}
+
+int collect_processes(ProcessList *processes) {
+    /* TODO: 从 /proc 收集所有进程。 */
+    return 0;
+}
+
+int add_process(ProcessList *processes, pid_t pid, pid_t ppid, const char *comm) {
+    /* TODO: 追加一个进程到 ProcessList。 */
+    return 0;
+}
+
+Process *find_process(ProcessList *processes, pid_t pid) {
+    /* TODO: 按 pid 查找进程。 */
+    return NULL;
+}
+
+int build_tree(ProcessList *processes) {
+    /* TODO: 根据 ppid 建立父子关系。 */
+    return 0;
+}
+
+void sort_children(ProcessList *processes) {
+    /* TODO: 对每个进程的 children 按 pid 排序。 */
+}
+
+Process *find_root(ProcessList *processes) {
+    /* TODO: 找到进程树的打印起点。 */
+    return NULL;
+}
+
+void print_tree(const Process *root, const Options *options, int depth) {
+    /* TODO: 递归打印进程树。 */
+}
+
+void free_processes(ProcessList *processes) {
+    /* TODO: 释放进程表相关内存。 */
+}
+
+int main(int argc, char *argv[]) {
+    (void)argc;
+    (void)argv;
+
     pid_t self = getpid();
     pid_t parent = getppid();
 
