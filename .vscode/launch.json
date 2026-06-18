@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "Debug labyrinth",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/labyrinth/labyrinth",
+            "args": [
+                "-m",
+                "maps/map.txt",
+                "-p",
+                "1",
+                "--move",
+                "right"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/labyrinth",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "C/C++: gcc build active file"
+        }
+    ]
+}
