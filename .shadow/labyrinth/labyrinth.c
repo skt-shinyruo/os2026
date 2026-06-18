@@ -230,7 +230,16 @@ bool saveMap(Labyrinth *labyrinth, const char *filename) {
 
 // Check if all empty spaces are connected using DFS
 void dfs(Labyrinth *labyrinth, int row, int col, bool visited[MAX_ROWS][MAX_COLS]) {
-    // TODO: Implement this function
+    if (row < 0 || row >= labyrinth->rows || col < 0 || col >= labyrinth->cols ||
+        visited[row][col] || labyrinth->map[row][col] == '#') {
+        return;
+    }
+
+    visited[row][col] = true;
+    dfs(labyrinth, row - 1, col, visited);
+    dfs(labyrinth, row + 1, col, visited);
+    dfs(labyrinth, row, col - 1, visited);
+    dfs(labyrinth, row, col + 1, visited);
 }
 
 bool isConnected(Labyrinth *labyrinth) {
