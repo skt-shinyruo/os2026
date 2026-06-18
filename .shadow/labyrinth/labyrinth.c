@@ -69,9 +69,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    for (int i = 0; i < labyrinth.rows; i++) {
-        printf("%s\n", labyrinth.map[i]);
-    }
+    printMap(&labyrinth);
 
     Position position = findPlayer(&labyrinth, labyrinth_options.player_id);
     if (position.row == -1 || position.col == -1) {
@@ -88,7 +86,14 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    printMap(&labyrinth);
     return 0;
+}
+
+void printMap(Labyrinth *labyrinth) {
+    for (int i = 0; i < labyrinth->rows; i++) {
+        printf("%s\n", labyrinth->map[i]);
+    }
 }
 
 void printUsage() {
@@ -194,7 +199,7 @@ Position findFirstEmptySpace(Labyrinth *labyrinth) {
     Position pos = {-1, -1};
     for (int i = 0; i < labyrinth->rows; i++) {
         for (int j = 0; j < labyrinth->cols; j++) {
-            if (labyrinth->map[i][j] == ' ') {
+            if (labyrinth->map[i][j] == '.') {
                 pos.row = i;
                 pos.col = j;
                 return pos;
