@@ -8,6 +8,7 @@
 #include <testkit.h>
 
 void printUsage();
+void printMap(Labyrinth *labyrinth);
 
 typedef struct {
     const char *map_file;
