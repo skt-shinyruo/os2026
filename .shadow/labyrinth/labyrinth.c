@@ -72,15 +72,67 @@ bool isValidPlayer(char playerId) {
 }
 
 bool loadMap(Labyrinth *labyrinth, const char *filename) {
-    // TODO: Implement this function
-    FILE  *file = fopen(filename, "r");
+    FILE *file = fopen(filename, "r");
     if (file == NULL) {
         fprintf(stderr, "Error: Unable to open file %s\n", filename);
         return false;
     }
 
+    char line[MAX_COLS + 3];
+    int rows = 0;
+    int cols = -1;
 
+    while (fgets(line, sizeof(line), file) != NULL) {
+        size_t len = strcspn(line, "\n");
+        bool has_newline = line[len] == '\n';
 
+        if (!has_newline && !feof(file)) {
+            fprintf(stderr, "Error: Map row exceeds maximum width\n");
+            fclose(file);
+            return false;
+        }
+
+        if (len > 0 && line[len - 1] == '\r') {
+            len--;
+        }
+
+        if (len == 0 || len > MAX_COLS || rows >= MAX_ROWS) {
+            fprintf(stderr, "Error: Invalid map dimensions\n");
+            fclose(file);
+            return false;
+        }
+
+        if (cols == -1) {
+            cols = (int)len;
+        } else if (cols != (int)len) {
+            fprintf(stderr, "Error: Inconsistent map row lengths\n");
+            fclose(file);
+            return false;
+        }
+
+        for (int col = 0; col < (int)len; col++) {
+            char cell = line[col];
+            if (cell != '#' && cell != '.' && !isValidPlayer(cell)) {
+                fprintf(stderr, "Error: Invalid map character\n");
+                fclose(file);
+                return false;
+            }
+            labyrinth->map[rows][col] = cell;
+        }
+        if (len < MAX_COLS) {
+            labyrinth->map[rows][len] = '\0';
+        }
+        rows++;
+    }
+
+    if (ferror(file) || rows == 0) {
+        fprintf(stderr, "Error: Unable to read map\n");
+        fclose(file);
+        return false;
+    }
+
+    labyrinth->rows = rows;
+    labyrinth->cols = cols;
 
     fclose(file);
     return true;
@@ -118,7 +170,8 @@ Position findFirstEmptySpace(Labyrinth *labyrinth) {
 
 bool isEmptySpace(Labyrinth *labyrinth, int row, int col) {
     // TODO: Implement this function
-    if (row >= 0 && row < labyrinth->rows && col >= 0 && col < labyrinth->cols) {
+    if (row >= 0 && row < labyrinth->rows && col >= 0 &&
+        col < labyrinth->cols) {
         return labyrinth->map[row][col] == ' ';
     }
     return false;
@@ -159,14 +212,24 @@ bool saveMap(Labyrinth *labyrinth, const char *filename) {
     // TODO: Implement this function
     FILE *file = fopen(filename, "w");
     if (file == NULL) {
-        fprintf(stderr, "Error: Unable to open file %s for writing\n", filename);
-        
-    return false;
+        fprintf(stderr, "Error: Unable to open file %s for writing\n",
+                filename);
+        return false;
+    }
+
+    for (int i = 0; i < labyrinth->rows; i++) {
+        for (int j = 0; j < labyrinth->cols; j++) {
+            fputc(labyrinth->map[i][j], file);
+        }
+        fputc('\n', file);
+    }
+
+    fclose(file);
+    return true;
 }
 
 // Check if all empty spaces are connected using DFS
-void dfs(Labyrinth *labyrinth, int row, int col,
-         bool visited[MAX_ROWS][MAX_COLS]) {
+void dfs(Labyrinth *labyrinth, int row, int col, bool visited[MAX_ROWS][MAX_COLS]) {
     // TODO: Implement this function
 }
 
