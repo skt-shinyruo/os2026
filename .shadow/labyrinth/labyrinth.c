@@ -11,8 +11,8 @@ void printUsage();
 
 typedef struct {
     const char *map_file;
-    int move_direction;
-    int player_id;
+    const char *move_direction;
+    char player_id;
     int show_version;
 } Labyrinth_Options;
 
@@ -27,30 +27,63 @@ int main(int argc, char *argv[]) {
 
     int opt;
 
-    Labyrinth_Options labyrinth = {0};
+    Labyrinth_Options labyrinth_options = {0};
     while ((opt = getopt_long(argc, argv, "m:p:", long_options, NULL)) != -1) {
         switch (opt) {
         case 'm':
-            labyrinth.map_file = optarg;
+            labyrinth_options.map_file = optarg;
             break;
         case 'p':
-            labyrinth.player_id = atoi(optarg);
+            labyrinth_options.player_id = optarg[0];
             break;
         case 'd':
-            labyrinth.move_direction = atoi(optarg);
+            labyrinth_options.move_direction = optarg;
             break;
         case 'v':
-            labyrinth.show_version = 1;
+            labyrinth_options.show_version = 1;
             break;
         default:
             printUsage();
             return 1;
         }
-        /* code */
     }
-    printf("Map file: %s\n", labyrinth.map_file);
-    printf("Player ID: %d\n", labyrinth.player_id);
-    printf("Move direction: %d\n", labyrinth.move_direction);
+
+
+    if (labyrinth_options.show_version) {
+        printf("%s\n", VERSION_INFO);
+        return 0;
+    }
+
+    if (!isValidPlayer(labyrinth_options.player_id)) {
+        fprintf(stderr, "Error: Invalid player ID\n");
+        return 1;
+    }
+
+    Labyrinth labyrinth = {0};
+    if (!loadMap(&labyrinth, labyrinth_options.map_file)) {
+        fprintf(stderr, "Error: Failed to load map\n");
+        return 1;
+    }
+
+    if (!isConnected(&labyrinth)) {
+        fprintf(stderr, "Error: Map is not fully connected\n");
+        return 1;
+    }
+
+    Position position = findPlayer(&labyrinth, labyrinth_options.player_id);
+    if (position.row == -1 || position.col == -1) {
+        Position first_empty_position = findFirstEmptySpace(&labyrinth);
+        labyrinth.map[first_empty_position.row][first_empty_position.col] =
+            labyrinth_options.player_id;
+    }
+
+    if (labyrinth_options.move_direction) {
+        if (!movePlayer(&labyrinth, labyrinth_options.player_id,
+                        labyrinth_options.move_direction)) {
+            fprintf(stderr, "Error: Failed to move player\n");
+            return 1;
+        }
+    }
 
     return 0;
 }
@@ -229,9 +262,11 @@ bool saveMap(Labyrinth *labyrinth, const char *filename) {
 }
 
 // Check if all empty spaces are connected using DFS
-void dfs(Labyrinth *labyrinth, int row, int col, bool visited[MAX_ROWS][MAX_COLS]) {
-    if (row < 0 || row >= labyrinth->rows || col < 0 || col >= labyrinth->cols ||
-        visited[row][col] || labyrinth->map[row][col] == '#') {
+void dfs(Labyrinth *labyrinth, int row, int col,
+         bool visited[MAX_ROWS][MAX_COLS]) {
+    if (row < 0 || row >= labyrinth->rows || col < 0 ||
+        col >= labyrinth->cols || visited[row][col] ||
+        labyrinth->map[row][col] == '#') {
         return;
     }
 
