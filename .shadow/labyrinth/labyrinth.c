@@ -48,7 +48,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-
     if (labyrinth_options.show_version) {
         printf("%s\n", VERSION_INFO);
         return 0;
@@ -68,6 +67,10 @@ int main(int argc, char *argv[]) {
     if (!isConnected(&labyrinth)) {
         fprintf(stderr, "Error: Map is not fully connected\n");
         return 1;
+    }
+
+    for (int i = 0; i < labyrinth.rows; i++) {
+        printf("%s\n", labyrinth.map[i]);
     }
 
     Position position = findPlayer(&labyrinth, labyrinth_options.player_id);
@@ -205,7 +208,7 @@ bool isEmptySpace(Labyrinth *labyrinth, int row, int col) {
     // TODO: Implement this function
     if (row >= 0 && row < labyrinth->rows && col >= 0 &&
         col < labyrinth->cols) {
-        return labyrinth->map[row][col] == ' ';
+        return labyrinth->map[row][col] == '.';
     }
     return false;
 }
@@ -233,7 +236,7 @@ bool movePlayer(Labyrinth *labyrinth, char playerId, const char *direction) {
     }
 
     if (isEmptySpace(labyrinth, newRow, newCol)) {
-        labyrinth->map[playerPos.row][playerPos.col] = ' ';
+        labyrinth->map[playerPos.row][playerPos.col] = '.';
         labyrinth->map[newRow][newCol] = playerId;
         return true;
     }
@@ -278,6 +281,36 @@ void dfs(Labyrinth *labyrinth, int row, int col,
 }
 
 bool isConnected(Labyrinth *labyrinth) {
-    // TODO: Implement this function
-    return false;
+    bool visited[MAX_ROWS][MAX_COLS] = {false};
+    int start_row = -1;
+    int start_col = -1;
+
+    for (int row = 0; row < labyrinth->rows; row++) {
+        for (int col = 0; col < labyrinth->cols; col++) {
+            if (labyrinth->map[row][col] != '#') {
+                start_row = row;
+                start_col = col;
+                break;
+            }
+        }
+        if (start_row != -1) {
+            break;
+        }
+    }
+
+    if (start_row == -1) {
+        return true;
+    }
+
+    dfs(labyrinth, start_row, start_col, visited);
+
+    for (int row = 0; row < labyrinth->rows; row++) {
+        for (int col = 0; col < labyrinth->cols; col++) {
+            if (labyrinth->map[row][col] != '#' && !visited[row][col]) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
