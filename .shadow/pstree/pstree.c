@@ -283,10 +283,14 @@ int main(int argc, char *argv[]) {
         add_process(&processes, &stat_info);
     }
 
+
+    printf("Collected %zu processes:\n", processes.count);
     for (size_t i = 0; i < processes.count; ++i) {
         Process *proc = &processes.items[i];
         printf("%s(%d) ppid=%d\n", proc->comm, proc->pid, proc->ppid);
     }
+
+
 
     
 
