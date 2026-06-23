@@ -306,6 +306,7 @@ int main(int argc, char *argv[]) {
                 perror("children realloc");
                 return -1;
             }
+            parent->children = new_children;
             parent->child_capacity = new_capacity;
         }
         parent->children[parent->child_count++] = &proc;
