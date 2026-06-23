@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
 
-    // /*
+    /*
     pid_t self = getpid();
     pid_t parent = getppid();
 
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
     }
 
     closedir(d);
-    // */
+    */
 
     Options options = {0};
     parse_options(argc, argv, &options);
