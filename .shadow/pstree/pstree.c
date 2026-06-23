@@ -201,17 +201,19 @@ int build_tree(ProcessList *processes) {
     return 0;
 }
 
+int compare_Children(const void *a, const void *b) {
+    const Process *pa = *(const Process **)a;
+    const Process *pb = *(const Process **)b;
+    return (pa->pid > pb->pid) - (pa->pid < pb->pid);
+}
+
 void sort_children(ProcessList *processes) {
     /* TODO: 对每个进程的 children 按 pid 排序。 */
     for (size_t i = 0; i < processes->count; ++i) {
         Process *proc = &processes->items[i];
         if (proc->child_count > 1) {
             qsort(proc->children, proc->child_count, sizeof(Process *),
-                  [](const void *a, const void *b) {
-                      const Process *pa = *(const Process **)a;
-                      const Process *pb = *(const Process **)b;
-                      return (pa->pid > pb->pid) - (pa->pid < pb->pid);
-                  });
+                  compare_Children);
         }
     }
 }
