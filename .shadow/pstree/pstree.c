@@ -307,7 +307,6 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
             parent->child_capacity = new_capacity;
-            parent->child_count = parent->child_count + 1;
         }
         proc->children[proc->child_count++] = parent;
     }
