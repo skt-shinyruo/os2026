@@ -144,8 +144,10 @@ int add_process(ProcessList *processes, StatInfo *statInfo) {
     /* TODO: 追加一个进程到 ProcessList。 */
 
     if (processes->count >= processes->capacity) {
-        size_t new_capacity = (processes->capacity == 0) ? 16 : processes->capacity * 2;
-        Process *new_items = realloc(processes->items, new_capacity * sizeof(Process));
+        size_t new_capacity =
+            (processes->capacity == 0) ? 16 : processes->capacity * 2;
+        Process *new_items =
+            realloc(processes->items, new_capacity * sizeof(Process));
         if (!new_items)
             return -1;
         processes->items = new_items;
@@ -283,16 +285,33 @@ int main(int argc, char *argv[]) {
         add_process(&processes, &stat_info);
     }
 
+    for (size_t i = 0; i < processes.count; ++i) {
+        Process *proc = &processes.items[i];
+        Process *parent = find_process(&processes, proc->ppid);
+        if (!parent) {
+            continue;
+        }
+
+        if (parent->child_count >= parent->child_capacity) {
+            size_t new_capacity =
+                (parent->child_capacity == 0) ? 16 : parent->child_capacity * 2;
+            Process *new_children =
+                realloc(parent->children,
+                        new_capacity * sizeof(Process))； if (!new_children) {
+                perror("children realloc");
+                return -1;
+            }
+            parent->child_capacity = new_capacity;
+            parent->child_count = parent->child_count + 1;
+        }
+        proc->children[proc->child_count++] = parent;
+    }
 
     printf("Collected %zu processes:\n", processes.count);
     for (size_t i = 0; i < processes.count; ++i) {
         Process *proc = &processes.items[i];
-        printf("%s(%d) ppid=%d\n", proc->comm, proc->pid, proc->ppid);
+        printf("%s(%d) ppid=%d child_count=%zu child_capacity=%zu\n", proc->comm, proc->pid, proc->ppid, proc->child_count, proc->child_capacity);
     }
-
-
-
-    
 
     closedir(d);
 
