@@ -26,6 +26,15 @@ struct Process {
     size_t child_capacity;
 };
 
+typedef struct StatInfo StatInfo;
+
+struct StatInfo {
+    pid_t pid;
+    char comm[COMM_LEN];
+    char state;
+    pid_t ppid;
+};
+
 typedef struct {
     Process *items;
     size_t count;
@@ -36,8 +45,7 @@ int parse_options(int argc, char *argv[], Options *options);
 void print_version(void);
 void print_usage(FILE *out, const char *program);
 int collect_processes(ProcessList *processes);
-int add_process(ProcessList *processes, pid_t pid, pid_t ppid,
-                const char *comm);
+int add_process(ProcessList *processes, StatInfo *statInfo);
 Process *find_process(ProcessList *processes, pid_t pid);
 int build_tree(ProcessList *processes);
 void sort_children(ProcessList *processes);
@@ -132,9 +140,26 @@ int collect_processes(ProcessList *processes) {
     return 0;
 }
 
-int add_process(ProcessList *processes, pid_t pid, pid_t ppid,
-                const char *comm) {
+int add_process(ProcessList *processes, StatInfo *statInfo) {
     /* TODO: 追加一个进程到 ProcessList。 */
+
+    if (processes->count >= processes->capacity) {
+        size_t new_capacity = (processes->capacity == 0) ? 16 : processes->capacity * 2;
+        Process *new_items = realloc(processes->items, new_capacity * sizeof(Process));
+        if (!new_items)
+            return -1;
+        processes->items = new_items;
+        processes->capacity = new_capacity;
+    }
+
+    Process proc = {0};
+    proc.pid = statInfo->pid;
+    proc.ppid = statInfo->ppid;
+    strncpy(proc.comm, statInfo->comm, COMM_LEN);
+    proc.comm[COMM_LEN - 1] = 0;
+
+    processes->items[processes->count++] = proc;
+
     return 0;
 }
 
@@ -165,11 +190,36 @@ void free_processes(ProcessList *processes) {
     /* TODO: 释放进程表相关内存。 */
 }
 
+static int read_stat(pid_t pid, StatInfo *stat_info) {
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+    FILE *f = fopen(path, "r");
+    if (!f)
+        return -1;
+    char line[4096];
+    if (!fgets(line, sizeof(line), f)) {
+        fclose(f);
+        return -1;
+    }
+    fclose(f);
+
+    int id, ppid;
+    char comm[256], state;
+    if (sscanf(line, "%d (%255[^)]) %c %d", &id, comm, &state, &ppid) != 4)
+        return -1;
+    stat_info->pid = (pid_t)id;
+    strncpy(stat_info->comm, comm, COMM_LEN);
+    stat_info->comm[COMM_LEN - 1] = 0;
+    stat_info->state = state;
+    stat_info->ppid = (pid_t)ppid;
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
 
-    /*
+    // /*
     pid_t self = getpid();
     pid_t parent = getppid();
 
@@ -204,11 +254,43 @@ int main(int argc, char *argv[]) {
     }
 
     closedir(d);
-    */
+    // */
+
     Options options = {0};
     parse_options(argc, argv, &options);
-    
+
     ProcessList processes = {0};
+
+    DIR *d = opendir("/proc");
+    if (!d) {
+        perror("opendir /proc");
+        return -1;
+    }
+
+    struct dirent *de;
+    while ((de = readdir(d)) != NULL) {
+        if (!isdigit((unsigned char)de->d_name[0]))
+            continue;
+        pid_t pid = (pid_t)atoi(de->d_name);
+        pid_t ppid;
+        if (get_ppid_from_stat(pid, &ppid) != 0)
+            continue;
+        char comm[COMM_LEN] = "?";
+
+        StatInfo stat_info = {0};
+        read_stat(pid, &stat_info);
+
+        add_process(&processes, &stat_info);
+    }
+
+    for (size_t i = 0; i < processes.count; ++i) {
+        Process *proc = &processes.items[i];
+        printf("%s(%d) ppid=%d\n", proc->comm, proc->pid, proc->ppid);
+    }
+
+    
+
+    closedir(d);
 
     return 0;
 }
