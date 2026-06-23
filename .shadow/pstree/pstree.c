@@ -296,8 +296,8 @@ int main(int argc, char *argv[]) {
             size_t new_capacity =
                 (parent->child_capacity == 0) ? 16 : parent->child_capacity * 2;
             Process *new_children =
-                realloc(parent->children,
-                        new_capacity * sizeof(Process))； if (!new_children) {
+                realloc(parent->children, new_capacity * sizeof(Process));
+            if (!new_children) {
                 perror("children realloc");
                 return -1;
             }
@@ -310,7 +310,9 @@ int main(int argc, char *argv[]) {
     printf("Collected %zu processes:\n", processes.count);
     for (size_t i = 0; i < processes.count; ++i) {
         Process *proc = &processes.items[i];
-        printf("%s(%d) ppid=%d child_count=%zu child_capacity=%zu\n", proc->comm, proc->pid, proc->ppid, proc->child_count, proc->child_capacity);
+        printf("%s(%d) ppid=%d child_count=%zu child_capacity=%zu\n",
+               proc->comm, proc->pid, proc->ppid, proc->child_count,
+               proc->child_capacity);
     }
 
     closedir(d);
