@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
             }
             parent->child_capacity = new_capacity;
         }
-        parent->children[parent->child_count++] = proc;
+        parent->children[parent->child_count++] = &proc;
     }
 
     printf("Collected %zu processes:\n", processes.count);
