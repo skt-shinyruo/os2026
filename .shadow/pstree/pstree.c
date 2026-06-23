@@ -340,8 +340,9 @@ int main(int argc, char *argv[]) {
             }
             printf("\n");
         }
-
-        closedir(d);
-
-        return 0;
     }
+
+    closedir(d);
+
+    return 0;
+}
