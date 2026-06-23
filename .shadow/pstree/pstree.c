@@ -203,6 +203,17 @@ int build_tree(ProcessList *processes) {
 
 void sort_children(ProcessList *processes) {
     /* TODO: 对每个进程的 children 按 pid 排序。 */
+    for (size_t i = 0; i < processes->count; ++i) {
+        Process *proc = &processes->items[i];
+        if (proc->child_count > 1) {
+            qsort(proc->children, proc->child_count, sizeof(Process *),
+                  [](const void *a, const void *b) {
+                      const Process *pa = *(const Process **)a;
+                      const Process *pb = *(const Process **)b;
+                      return (pa->pid > pb->pid) - (pa->pid < pb->pid);
+                  });
+        }
+    }
 }
 
 Process *find_root(ProcessList *processes) {
@@ -294,7 +305,6 @@ int main(int argc, char *argv[]) {
         perror("opendir /proc");
         return -1;
     }
-
 
     // 遍历
     struct dirent *de;
