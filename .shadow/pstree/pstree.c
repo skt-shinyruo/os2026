@@ -332,9 +332,16 @@ int main(int argc, char *argv[]) {
         printf("%s(%d) ppid=%d child_count=%zu child_capacity=%zu\n",
                proc->comm, proc->pid, proc->ppid, proc->child_count,
                proc->child_capacity);
+        if (proc->child_count > 1) {
+            printf("  Children: ");
+            for (size_t j = 0; j < proc->child_count; ++j) {
+                Process *child = proc->children[j];
+                printf("%s(%d) ", child->comm, child->pid);
+            }
+            printf("\n");
+        }
+
+        closedir(d);
+
+        return 0;
     }
-
-    closedir(d);
-
-    return 0;
-}
