@@ -177,6 +177,27 @@ Process *find_process(ProcessList *processes, pid_t pid) {
 
 int build_tree(ProcessList *processes) {
     /* TODO: 根据 ppid 建立父子关系。 */
+    for (size_t i = 0; i < processes->count; ++i) {
+        Process *proc = &processes->items[i];
+        Process *parent = find_process(processes, proc->ppid);
+        if (!parent) {
+            continue;
+        }
+
+        if (parent->child_count >= parent->child_capacity) {
+            size_t new_capacity =
+                (parent->child_capacity == 0) ? 16 : parent->child_capacity * 2;
+            Process *new_children =
+                realloc(parent->children, new_capacity * sizeof(Process));
+            if (!new_children) {
+                perror("children realloc");
+                return -1;
+            }
+            parent->children = new_children;
+            parent->child_capacity = new_capacity;
+        }
+        parent->children[parent->child_count++] = &proc;
+    }
     return 0;
 }
 
@@ -274,6 +295,8 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+
+    // 遍历
     struct dirent *de;
     while ((de = readdir(d)) != NULL) {
         if (!isdigit((unsigned char)de->d_name[0]))
@@ -290,27 +313,8 @@ int main(int argc, char *argv[]) {
         add_process(&processes, &stat_info);
     }
 
-    for (size_t i = 0; i < processes.count; ++i) {
-        Process *proc = &processes.items[i];
-        Process *parent = find_process(&processes, proc->ppid);
-        if (!parent) {
-            continue;
-        }
-
-        if (parent->child_count >= parent->child_capacity) {
-            size_t new_capacity =
-                (parent->child_capacity == 0) ? 16 : parent->child_capacity * 2;
-            Process *new_children =
-                realloc(parent->children, new_capacity * sizeof(Process));
-            if (!new_children) {
-                perror("children realloc");
-                return -1;
-            }
-            parent->children = new_children;
-            parent->child_capacity = new_capacity;
-        }
-        parent->children[parent->child_count++] = &proc;
-    }
+    build_tree(&processes);
+    sort_children(&processes);
 
     printf("Collected %zu processes:\n", processes.count);
     for (size_t i = 0; i < processes.count; ++i) {
