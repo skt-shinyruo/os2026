@@ -187,8 +187,8 @@ int build_tree(ProcessList *processes) {
         if (parent->child_count >= parent->child_capacity) {
             size_t new_capacity =
                 (parent->child_capacity == 0) ? 16 : parent->child_capacity * 2;
-            Process *new_children =
-                realloc(parent->children, new_capacity * sizeof(Process));
+            Process **new_children =
+                    realloc(parent->children, new_capacity * sizeof(*parent->children));
             if (!new_children) {
                 perror("children realloc");
                 return -1;
@@ -196,7 +196,7 @@ int build_tree(ProcessList *processes) {
             parent->children = new_children;
             parent->child_capacity = new_capacity;
         }
-        parent->children[parent->child_count++] = &proc;
+        parent->children[parent->child_count++] = proc;
     }
     return 0;
 }
@@ -331,7 +331,7 @@ int main(int argc, char *argv[]) {
     printf("Collected %zu processes:\n", processes.count);
     for (size_t i = 0; i < processes.count; ++i) {
         Process *proc = &processes.items[i];
-        printf("%s(%d) ppid=%d child_count=%zu child_capacity=%zu\n",
+        printf("%s(%d) ppid=%d child_ Process *proc = &processes->items[i];ccount=%zu child_capacity=%zu\n",
                proc->comm, proc->pid, proc->ppid, proc->child_count,
                proc->child_capacity);
         if (proc->child_count > 1) {
