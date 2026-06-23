@@ -167,6 +167,11 @@ int add_process(ProcessList *processes, StatInfo *statInfo) {
 
 Process *find_process(ProcessList *processes, pid_t pid) {
     /* TODO: 按 pid 查找进程。 */
+    for (size_t i = 0; i < processes->count; ++i) {
+        if (processes->items[i].pid == pid) {
+            return &processes->items[i];
+        }
+    }
     return NULL;
 }
 
