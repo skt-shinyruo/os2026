@@ -36,7 +36,6 @@ int main(int argc, char *argv[]) {
     char *exec_envp[] = {
         "PATH=/usr/local/bin:/usr/bin:/bin",
         "HOME=/home/feng",
-
         NULL,
     };
 
@@ -49,7 +48,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < argc; i++) {
         printf("exec_argv[%d]: %s\n", i, exec_argv[i]);
     }
-    execve("strace", exec_argv, exec_envp);
+    execve("/usr/bin/strace", exec_argv, exec_envp);
     perror(argv[0]);
     exit(EXIT_FAILURE);
 }
