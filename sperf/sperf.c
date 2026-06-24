@@ -28,4 +28,35 @@ void print_top_syscalls(syscall_stats *stats, int n) {
 }
 
 int main(int argc, char *argv[]) {
+
+    if (argc < 2) {
+        fprintf(stderr, "usage: %s command [args...]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    char **exec_argv = calloc(argc + 2, sizeof(char *));
+    if (exec_argv == NULL) {
+        perror("calloc");
+        return EXIT_FAILURE;
+    }
+    exec_argv[0] = "strace";
+    exec_argv[1] = "-T";
+
+    char *exec_envp[] = {
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        NULL,
+    };
+
+    for (int i = 1; i < argc; i++) {
+        exec_argv[i + 1] = argv[i];
+    }
+    exec_argv[argc + 1] = NULL;
+
+    for (int i = 0; i < argc + 2; i++) {
+        printf("exec_argv[%d]: %s\n", i, exec_argv[i]);
+    }
+
+    execve("/usr/bin/strace", exec_argv, exec_envp);
+    perror(argv[0]);
+    exit(EXIT_FAILURE);
 }
