@@ -34,8 +34,7 @@ int main(int argc, char *argv[]) {
         NULL,
     };
     char *exec_envp[] = {
-        "PATH=/bin",
-        "PATH=/usr/bin",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
         NULL,
     };
 
@@ -43,7 +42,6 @@ int main(int argc, char *argv[]) {
         printf("argv[%d]: %s\n", i, argv[i]);
     }
     for (int i = 1; i < argc; i++) {
-        printf("argv[%d]: %s\n", i, argv[i]);
         exec_argv[i] = argv[i];
     }
     for (int i = 0; i < argc; i++) {
