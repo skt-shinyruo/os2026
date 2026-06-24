@@ -201,7 +201,7 @@ int build_tree(ProcessList *processes) {
     return 0;
 }
 
-int compare_Children(const void *a, const void *b) {
+int compare_children(const void *a, const void *b) {
     const Process *pa = *(const Process **)a;
     const Process *pb = *(const Process **)b;
     return (pa->pid > pb->pid) - (pa->pid < pb->pid);
@@ -213,7 +213,7 @@ void sort_children(ProcessList *processes) {
         Process *proc = &processes->items[i];
         if (proc->child_count > 1) {
             qsort(proc->children, proc->child_count, sizeof(Process *),
-                  compare_Children);
+                  compare_children);
         }
     }
 }
@@ -231,10 +231,21 @@ Process *find_root(ProcessList *processes) {
 
 void print_tree(const Process *root, const Options *options, int depth) {
     /* TODO: 递归打印进程树。 */
+    printf("%*s%s(%d)\n", depth * 2, "", root->comm, root->pid);
+    for (size_t i = 0; i < root->child_count; ++i) {
+        print_tree(root->children[i], options, depth + 1);
+    }
 }
 
 void free_processes(ProcessList *processes) {
     /* TODO: 释放进程表相关内存。 */
+    for (size_t i = 0; i < processes->count; ++i) {
+        free(processes->items[i].children);
+    }
+    free(processes->items);
+    processes->items = NULL;
+    processes->count = 0;
+    processes->capacity = 0;
 }
 
 static int read_stat(pid_t pid, StatInfo *stat_info) {
@@ -351,6 +362,14 @@ int main(int argc, char *argv[]) {
             }
             printf("\n");
         }
+    }
+
+    Process *root = find_root(&processes);
+    if (root) {
+        printf("Process tree starting from %s(%d):\n", root->comm, root->pid);
+        print_tree(root, &options, 0);
+    } else {
+        printf("No root process found.\n");
     }
 
     closedir(d);
