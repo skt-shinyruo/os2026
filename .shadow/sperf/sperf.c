@@ -109,10 +109,10 @@ int main(int argc, char *argv[]) {
         perror("pipe");
         exit(EXIT_FAILURE);
     }
-    printf("read end = %d, write end = %d\n", pipefd[0], pipefd[1]);
+
     pid_t pid = fork();
+
     if (pid == 0) {
-        printf("read end = %d, write end = %d\n", pipefd[0], pipefd[1]);
         close(pipefd[0]);
         dup2(pipefd[1], STDERR_FILENO);
         close(pipefd[1]);
@@ -126,7 +126,6 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    printf("read end = %d, write end = %d\n", pipefd[0], pipefd[1]);
     close(pipefd[1]);
     dup2(pipefd[0], STDIN_FILENO);
 
@@ -134,11 +133,9 @@ int main(int argc, char *argv[]) {
     char line[4096];
 
     while (fgets(line, sizeof(line), in) != NULL) {
-        printf("child received: %s", line);
-        char syscall_name[64];
-        double time;
-        if (parse_strace_line(line, syscall_name, &time) == 0) {
-            printf("syscall: %s, time: %f\n", syscall_name, time);
+        syscall_stat syscall_stat = {0};
+        if (parse_strace_line(line, syscall_stat.name, &syscall_stat.time) == 0) {
+            printf("syscall: %s, time: %f\n", syscall_stat.name, syscall_stat.time);
         }
     }
 
