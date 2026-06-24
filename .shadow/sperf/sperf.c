@@ -73,16 +73,29 @@ int main(int argc, char *argv[]) {
         printf("read end = %d, write end = %d\n", pipefd[0], pipefd[1]);
         close(pipefd[0]);
         dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
 
         execve("/usr/bin/strace", exec_argv, exec_envp);
         perror(argv[0]);
         exit(EXIT_FAILURE);
+        close(pipefd[1]);
+
     } else if (pid < 0) {
-        printf("read end = %d, write end = %d\n", pipefd[0], pipefd[1]);
         perror("fork");
         exit(EXIT_FAILURE);
     }
+
+    printf("read end = %d, write end = %d\n", pipefd[0], pipefd[1]);
+    close(pipefd[1]);
+    dup2(pipefd[0], STDIN_FILENO);
+
+    char buf[4096];
+    int n = read(pipefd[0], buf, sizeof(buf) - 1);
+    if (n > 0) {
+        buf[n] = '\0';
+        printf("child received: %s\n", buf);
+    }
+
+    close(pipefd[0]);
 
     return 0;
 }
