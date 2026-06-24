@@ -231,7 +231,12 @@ Process *find_root(ProcessList *processes) {
 
 void print_tree(const Process *root, const Options *options, int depth) {
     /* TODO: 递归打印进程树。 */
-    printf("%*s%s(%d)\n", depth * 2, "", root->comm, root->pid);
+    if (options->show_pids) {
+        printf("%*s%s(%d)\n", depth * 2, "", root->comm, root->pid);
+    } else {
+        printf("%*s%s\n", depth * 2, "", root->comm);
+    }
+
     for (size_t i = 0; i < root->child_count; ++i) {
         print_tree(root->children[i], options, depth + 1);
     }
@@ -347,6 +352,7 @@ int main(int argc, char *argv[]) {
         sort_children(&processes);
     }
 
+    /*
     printf("Collected %zu processes:\n", processes.count);
     for (size_t i = 0; i < processes.count; ++i) {
         Process *proc = &processes.items[i];
@@ -363,6 +369,7 @@ int main(int argc, char *argv[]) {
             printf("\n");
         }
     }
+    */
 
     Process *root = find_root(&processes);
     if (root) {
