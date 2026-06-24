@@ -73,11 +73,11 @@ int main(int argc, char *argv[]) {
         printf("read end = %d, write end = %d\n", pipefd[0], pipefd[1]);
         close(pipefd[0]);
         dup2(pipefd[1], STDERR_FILENO);
+        close(pipefd[1]);
 
         execve("/usr/bin/strace", exec_argv, exec_envp);
         perror(argv[0]);
         exit(EXIT_FAILURE);
-        close(pipefd[1]);
 
     } else if (pid < 0) {
         perror("fork");
