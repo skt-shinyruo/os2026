@@ -25,6 +25,48 @@ typedef struct {
 } syscall_stats;
 
 int parse_strace_line(char *line, char *syscall_name, double *time) {
+    if (!line || !syscall_name || !time)
+        return -1;
+
+    char *s = line;
+    while (*s && isspace((unsigned char)*s))
+        s++;
+
+    char *lp = strchr(s, '(');
+    char *rp = strrchr(s, ')');
+    if (!lp || !rp || lp >= rp)
+        return -1;
+
+    char *name_end = lp;
+    while (name_end > s && isspace((unsigned char)name_end[-1]))
+        name_end--;
+
+    size_t name_len = (size_t)(name_end - s);
+    if (name_len == 0)
+        return -1;
+
+    memcpy(syscall_name, s, name_len);
+    syscall_name[name_len] = '\0';
+
+    char *lt = strchr(rp, '<');
+    char *gt = lt ? strchr(lt, '>') : NULL;
+    if (!lt || !gt || lt >= gt)
+        return -1;
+
+    char tmp[64];
+    size_t dur_len = (size_t)(gt - lt - 1);
+    if (dur_len == 0 || dur_len >= sizeof(tmp))
+        return -1;
+
+    memcpy(tmp, lt + 1, dur_len);
+    tmp[dur_len] = '\0';
+
+    char *end = NULL;
+    *time = strtod(tmp, &end);
+    if (end == tmp)
+        return -1;
+
+    return 0;
 }
 
 void add_syscall(syscall_stats *stats, const char *name, double time) {
@@ -97,7 +139,7 @@ int main(int argc, char *argv[]) {
         double time;
         if (parse_strace_line(line, syscall_name, &time) == 0) {
             printf("syscall: %s, time: %f\n", syscall_name, time);
-        }   
+        }
     }
 
     close(pipefd[0]);
