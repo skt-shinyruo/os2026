@@ -53,20 +53,7 @@ Process *find_root(ProcessList *processes);
 void print_tree(const Process *root, const Options *options, int depth);
 void free_processes(ProcessList *processes);
 
-static int read_comm(pid_t pid, char *buf, size_t n) {
-    char path[64];
-    snprintf(path, sizeof(path), "/proc/%d/comm", pid);
-    FILE *f = fopen(path, "r");
-    if (!f)
-        return -1;
-    if (!fgets(buf, (int)n, f)) {
-        fclose(f);
-        return -1;
-    }
-    buf[strcspn(buf, "\n")] = 0;
-    fclose(f);
-    return 0;
-}
+
 
 int parse_options(int argc, char *argv[], Options *options) {
     /* TODO: 实现命令行参数解析。 */
