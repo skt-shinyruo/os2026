@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     if (pid == 0) {
         printf("read end = %d, write end = %d\n", pipefd[0], pipefd[1]);
         close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
 
         execve("/usr/bin/strace", exec_argv, exec_envp);
         perror(argv[0]);
