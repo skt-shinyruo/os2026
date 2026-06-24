@@ -30,6 +30,7 @@ void print_top_syscalls(syscall_stats *stats, int n) {
 int main(int argc, char *argv[]) {
     char *exec_argv[] = {
         "strace",
+        "-T",
         "ls",
         NULL,
     };
