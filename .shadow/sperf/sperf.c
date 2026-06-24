@@ -118,6 +118,7 @@ void print_top_syscalls(syscall_stats *stats, int n) {
     qsort(stats->stats, stats->count, sizeof(syscall_stat), compare_ratio);
 
     // print top n
+    printf("Top %d syscalls by time ratio:\n", n);
     for (int i = 0; i < n && i < stats->count; i++) {
         const char *syscall_name = stats->stats[i].name;
         double ratio = stats->stats[i].ratio;
@@ -191,7 +192,7 @@ int main(int argc, char *argv[]) {
 
     while (fgets(line, sizeof(line), in) != NULL) {
         // printf("line: %s", line);
-        
+
         syscall_stat syscall_stat = {0};
 
         if (parse_strace_line(line, syscall_stat.name, &syscall_stat.time) ==
