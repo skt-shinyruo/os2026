@@ -97,11 +97,11 @@ static long diff_ms(const struct timespec *start, const struct timespec *end) {
     return seconds * 1000 + nanoseconds / 1000000;
 }
 
-void compare_ratio(const void *a, const void *b) {
-    const syscall_stat *sa = (const syscall_stat *)a;
-    const syscall_stat *sb = (const syscall_stat *)b;
-    return (sb->ratio > sa->ratio) - (sb->ratio < sa->ratio);
-}
+  int compare_ratio(const void *a, const void *b) {
+      const syscall_stat *sa = a;
+      const syscall_stat *sb = b;
+      return (sb->ratio > sa->ratio) - (sb->ratio < sa->ratio);
+  }
 
 void print_top_syscalls(syscall_stats *stats, int n) {
     if (stats->count == 0) {
