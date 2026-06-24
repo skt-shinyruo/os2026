@@ -190,7 +190,8 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_MONOTONIC, &last_print);
 
     while (fgets(line, sizeof(line), in) != NULL) {
-        printf("line: %s", line);
+        // printf("line: %s", line);
+        
         syscall_stat syscall_stat = {0};
 
         if (parse_strace_line(line, syscall_stat.name, &syscall_stat.time) ==
