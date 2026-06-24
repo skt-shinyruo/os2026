@@ -93,6 +93,11 @@ int main(int argc, char *argv[]) {
 
     while (fgets(line, sizeof(line), in) != NULL) {
         printf("child received: %s", line);
+        char syscall_name[64];
+        double time;
+        if (parse_strace_line(line, syscall_name, &time) == 0) {
+            printf("syscall: %s, time: %f\n", syscall_name, time);
+        }   
     }
 
     close(pipefd[0]);
