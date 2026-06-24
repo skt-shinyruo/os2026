@@ -336,11 +336,6 @@ int main(int argc, char *argv[]) {
         if (!isdigit((unsigned char)de->d_name[0]))
             continue;
         pid_t pid = (pid_t)atoi(de->d_name);
-        pid_t ppid;
-        if (get_ppid_from_stat(pid, &ppid) != 0)
-            continue;
-        char comm[COMM_LEN] = "?";
-
         StatInfo stat_info = {0};
         read_stat(pid, &stat_info);
 
