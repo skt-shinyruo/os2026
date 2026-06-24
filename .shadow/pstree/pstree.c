@@ -68,26 +68,6 @@ static int read_comm(pid_t pid, char *buf, size_t n) {
     return 0;
 }
 
-static int get_ppid_from_stat(pid_t pid, pid_t *ppid_out) {
-    char path[64], line[4096];
-    snprintf(path, sizeof(path), "/proc/%d/stat", pid);
-    FILE *f = fopen(path, "r");
-    if (!f)
-        return -1;
-    if (!fgets(line, sizeof(line), f)) {
-        fclose(f);
-        return -1;
-    }
-    fclose(f);
-
-    int id, ppid;
-    char comm[256], state;
-    if (sscanf(line, "%d (%255[^)]) %c %d", &id, comm, &state, &ppid) != 4)
-        return -1;
-    *ppid_out = (pid_t)ppid;
-    return 0;
-}
-
 int parse_options(int argc, char *argv[], Options *options) {
     /* TODO: 实现命令行参数解析。 */
 
