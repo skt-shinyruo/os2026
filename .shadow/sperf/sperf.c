@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
         NULL,
     };
 
-    for (int i = 1; i < argc; i++) {
+    for (int i = 2; i < argc; i++) {
         exec_argv[i] = argv[i];
     }
     exec_argv[argc] = NULL;
