@@ -372,11 +372,13 @@ int main(int argc, char *argv[]) {
     */
 
     Process *root = find_root(&processes);
-    if (root) {
-        printf("Process tree starting from %s(%d):\n", root->comm, root->pid);
-        print_tree(root, &options, 0);
+    if (!root) {
+        fprintf(stderr, "No root process found.\n");
+        closedir(d);
+        free_processes(&processes);
+        return -1;
     } else {
-        printf("No root process found.\n");
+        print_tree(root, &options, 0);
     }
 
     closedir(d);
