@@ -89,10 +89,13 @@ int main(int argc, char *argv[]) {
     dup2(pipefd[0], STDIN_FILENO);
 
     char buf[4096];
-    int n = read(pipefd[0], buf, sizeof(buf) - 1);
-    if (n > 0) {
-        buf[n] = '\0';
-        printf("child received: %s\n", buf);
+    int n;
+    while (n > 0) {
+        n = read(pipefd[0], buf, sizeof(buf) - 1);
+        if (n > 0) {
+            buf[n] = '\0';
+            printf("child received: %s\n", buf);
+        }
     }
 
     close(pipefd[0]);
