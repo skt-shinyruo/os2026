@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
     close(pipefd[1]);
     dup2(pipefd[0], STDIN_FILENO);
 
-    FILE *in = fdopen(pipefd[0], "r");
+    FILE *in = fdopen(STDIN_FILENO, "r");
     char line[4096];
 
     syscall_stats stats = {0};
@@ -192,8 +192,8 @@ int main(int argc, char *argv[]) {
 
         if (parse_strace_line(line, syscall_stat.name, &syscall_stat.time) ==
             0) {
-            printf("syscall: %s, time: %f\n", syscall_stat.name,
-                   syscall_stat.time);
+            // printf("syscall: %s, time: %f\n", syscall_stat.name,
+            //        syscall_stat.time);
             add_syscall(&stats, syscall_stat.name, syscall_stat.time);
 
             struct timespec now;
@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    close(pipefd[0]);
 
+    close(pipefd[0]);
     return 0;
 }
