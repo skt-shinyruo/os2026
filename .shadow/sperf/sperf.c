@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         printf("argv[%d]: %s\n", i, argv[i]);
         exec_argv[i + 1] = argv[i];
     }
-    execve("strace", exec_argv, exec_envp);
+    execve("strace", argv, exec_envp);
     perror(argv[0]);
     exit(EXIT_FAILURE);
 }
