@@ -31,7 +31,6 @@ int main(int argc, char *argv[]) {
     char *exec_argv[] = {
         "strace",
         "-T",
-        "ls",
         NULL,
     };
     char *exec_envp[] = {
