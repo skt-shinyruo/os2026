@@ -187,8 +187,8 @@ int build_tree(ProcessList *processes) {
         if (parent->child_count >= parent->child_capacity) {
             size_t new_capacity =
                 (parent->child_capacity == 0) ? 16 : parent->child_capacity * 2;
-            Process **new_children =
-                    realloc(parent->children, new_capacity * sizeof(*parent->children));
+            Process **new_children = realloc(
+                parent->children, new_capacity * sizeof(*parent->children));
             if (!new_children) {
                 perror("children realloc");
                 return -1;
@@ -220,6 +220,12 @@ void sort_children(ProcessList *processes) {
 
 Process *find_root(ProcessList *processes) {
     /* TODO: 找到进程树的打印起点。 */
+    for (size_t i = 0; i < processes->count; ++i) {
+        Process *proc = &processes->items[i];
+        if (proc->ppid == 0 || find_process(processes, proc->ppid) == NULL) {
+            return proc;
+        }
+    }
     return NULL;
 }
 
@@ -326,12 +332,15 @@ int main(int argc, char *argv[]) {
     }
 
     build_tree(&processes);
-    sort_children(&processes);
+    if (options.numeric_sort) {
+        sort_children(&processes);
+    }
 
     printf("Collected %zu processes:\n", processes.count);
     for (size_t i = 0; i < processes.count; ++i) {
         Process *proc = &processes.items[i];
-        printf("%s(%d) ppid=%d child_ Process *proc = &processes->items[i];ccount=%zu child_capacity=%zu\n",
+        printf("%s(%d) ppid=%d child_ Process *proc = "
+               "&processes->items[i];ccount=%zu child_capacity=%zu\n",
                proc->comm, proc->pid, proc->ppid, proc->child_count,
                proc->child_capacity);
         if (proc->child_count > 1) {
