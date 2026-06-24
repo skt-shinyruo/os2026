@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         NULL,
     };
     char *exec_envp[] = {
-        // "PATH=/usr/local/bin:/usr/bin:/bin",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
         // "HOME=/home/feng",
         NULL,
     };
