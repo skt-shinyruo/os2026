@@ -29,6 +29,14 @@ void print_top_syscalls(syscall_stats *stats, int n) {
 
 int main(int argc, char *argv[]) {
 
+    char *argv[] = {"ls", "-l", "/tmp", NULL};
+    char *envp[] = {NULL};
+
+    execve("/bin/ls", argv, envp);
+
+    perror("execve failed");
+    return 1;
+
     char *exec_argv[] = {
         "strace",
         "ls",
@@ -43,7 +51,7 @@ int main(int argc, char *argv[]) {
         printf("argv[%d]: %s\n", i, argv[i]);
         exec_argv[i + 1] = argv[i];
     }
-    execve("strace", argv, exec_envp);
+    execve("strace", exec_argv, exec_envp);
     perror(argv[0]);
     exit(EXIT_FAILURE);
 }
