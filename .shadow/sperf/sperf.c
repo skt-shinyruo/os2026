@@ -88,14 +88,11 @@ int main(int argc, char *argv[]) {
     close(pipefd[1]);
     dup2(pipefd[0], STDIN_FILENO);
 
-    char buf[4096];
-    int n;
-    while (n > 0) {
-        n = read(pipefd[0], buf, sizeof(buf) - 1);
-        if (n > 0) {
-            buf[n] = '\0';
-            printf("child received: %s\n", buf);
-        }
+    FILE *in = fdopen(pipefd[0], "r");
+    char line[4096];
+
+    while (fgets(line, sizeof(line), in) != NULL) {
+        printf("child received: %s", line);
     }
 
     close(pipefd[0]);
