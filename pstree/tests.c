@@ -1,8 +1,122 @@
+#define _GNU_SOURCE
 #include <testkit.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <signal.h>
+#include <sys/prctl.h>
+#include <sys/wait.h>
+
+typedef struct Process Process;
+struct Process {
+    pid_t pid;
+    pid_t ppid;
+    char comm[256];
+    Process **children;
+    size_t child_count;
+    size_t child_capacity;
+};
+
+typedef struct {
+    bool show_pids;
+    bool numeric_sort;
+} Options;
+
+typedef struct {
+    Process *items;
+    Process **by_pid;
+    size_t count;
+    size_t capacity;
+} ProcessList;
+
+void print_forest(const ProcessList *processes, const Options *options);
+int build_pid_index(ProcessList *processes);
+Process *find_process(const ProcessList *processes, pid_t pid);
+
+static pid_t weird_name_pid;
+
+static void start_weird_process(void) {
+    weird_name_pid = fork();
+    tk_assert(weird_name_pid >= 0, "fork should succeed");
+    if (weird_name_pid == 0) {
+        prctl(PR_SET_NAME, "x)y");
+        for (;;) {
+            pause();
+        }
+    }
+    usleep(100000);
+}
+
+static void stop_weird_process(void) {
+    if (weird_name_pid > 0) {
+        kill(weird_name_pid, SIGKILL);
+        waitpid(weird_name_pid, NULL, 0);
+        weird_name_pid = -1;
+    }
+}
+
+// ======================== Unit Tests ========================
+
+UnitTest(print_forest_includes_all_roots) {
+    Process items[3] = {0};
+    Process *root_children[] = {&items[1]};
+    char *buffer = NULL;
+    size_t size = 0;
+    FILE *captured = open_memstream(&buffer, &size);
+    FILE *saved_stdout = stdout;
+
+    items[0].pid = 100;
+    items[0].ppid = 0;
+    strcpy(items[0].comm, "root_a");
+    items[0].children = root_children;
+    items[0].child_count = 1;
+
+    items[1].pid = 101;
+    items[1].ppid = 100;
+    strcpy(items[1].comm, "child_a");
+
+    items[2].pid = 200;
+    items[2].ppid = 0;
+    strcpy(items[2].comm, "root_b");
+
+    ProcessList processes = {.items = items, .count = 3, .capacity = 3};
+    Options options = {0};
+
+    tk_assert(captured != NULL, "open_memstream should succeed");
+    stdout = captured;
+    print_forest(&processes, &options);
+    fflush(captured);
+    stdout = saved_stdout;
+    fclose(captured);
+
+    tk_assert(strstr(buffer, "root_a") != NULL, "first root should print");
+    tk_assert(strstr(buffer, "root_b") != NULL, "second root should print");
+    free(buffer);
+}
+
+UnitTest(build_pid_index_supports_binary_lookup) {
+    Process items[3] = {0};
+
+    items[0].pid = 30;
+    items[1].pid = 10;
+    items[2].pid = 20;
+
+    ProcessList processes = {
+        .items = items,
+        .count = 3,
+        .capacity = 3,
+    };
+
+    tk_assert(build_pid_index(&processes) == 0,
+              "building the pid index should succeed");
+
+    tk_assert(processes.by_pid[0]->pid == 10, "lowest pid should come first");
+    tk_assert(processes.by_pid[1]->pid == 20, "middle pid should come second");
+    tk_assert(processes.by_pid[2]->pid == 30, "highest pid should come last");
+    tk_assert(find_process(&processes, 20) == &items[2],
+              "lookup should find the matching process");
+}
 
 // ======================== System Tests ========================
 
@@ -122,4 +236,14 @@ SystemTest(invalid_option,
               strstr(result->output, "invalid") != NULL || 
               strstr(result->output, "Invalid") != NULL,
               "Output should mention invalid option or show usage");
+}
+
+SystemTest(status_name_with_paren,
+           ((const char *[]){"./pstree"}),
+           .init = start_weird_process,
+           .fini = stop_weird_process) {
+    tk_assert(result->exit_status == 0,
+              "pstree should exit cleanly, got %d", result->exit_status);
+    tk_assert(strstr(result->output, "x)y") != NULL,
+              "Output should contain the full process name");
 }

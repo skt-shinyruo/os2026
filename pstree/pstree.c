@@ -37,6 +37,7 @@ struct StatInfo {
 
 typedef struct {
     Process *items;
+    Process **by_pid;
     size_t count;
     size_t capacity;
 } ProcessList;
@@ -46,12 +47,14 @@ void print_version(void);
 void print_usage(FILE *out, const char *program);
 int collect_processes(ProcessList *processes);
 int add_process(ProcessList *processes, StatInfo *statInfo);
-Process *find_process(ProcessList *processes, pid_t pid);
+int build_pid_index(ProcessList *processes);
+Process *find_process(const ProcessList *processes, pid_t pid);
 int build_tree(ProcessList *processes);
 void sort_children(ProcessList *processes);
-Process *find_root(ProcessList *processes);
+void print_forest(const ProcessList *processes, const Options *options);
 void print_tree(const Process *root, const Options *options, int depth);
 void free_processes(ProcessList *processes);
+static int read_status(pid_t pid, StatInfo *stat_info);
 
 int parse_options(int argc, char *argv[], Options *options) {
     /* TODO: 实现命令行参数解析。 */
@@ -101,7 +104,32 @@ void print_usage(FILE *out, const char *program) {
 }
 
 int collect_processes(ProcessList *processes) {
-    /* TODO: 从 /proc 收集所有进程。 */
+    DIR *d = opendir("/proc");
+    if (!d) {
+        perror("opendir /proc");
+        return -1;
+    }
+
+    struct dirent *de;
+    while ((de = readdir(d)) != NULL) {
+        if (!isdigit((unsigned char)de->d_name[0])) {
+            continue;
+        }
+
+        pid_t pid = (pid_t)atoi(de->d_name);
+        StatInfo stat_info = {0};
+
+        if (read_status(pid, &stat_info) < 0) {
+            continue;
+        }
+
+        if (add_process(processes, &stat_info) < 0) {
+            closedir(d);
+            return -1;
+        }
+    }
+
+    closedir(d);
     return 0;
 }
 
@@ -130,14 +158,47 @@ int add_process(ProcessList *processes, StatInfo *statInfo) {
     return 0;
 }
 
-Process *find_process(ProcessList *processes, pid_t pid) {
-    /* TODO: 按 pid 查找进程。 */
-    for (size_t i = 0; i < processes->count; ++i) {
-        if (processes->items[i].pid == pid) {
-            return &processes->items[i];
-        }
+int compare_children(const void *a, const void *b) {
+    const Process *pa = *(const Process *const *)a;
+    const Process *pb = *(const Process *const *)b;
+    return (pa->pid > pb->pid) - (pa->pid < pb->pid);
+}
+
+int build_pid_index(ProcessList *processes) {
+    Process **by_pid = realloc(processes->by_pid,
+                               processes->count * sizeof(*processes->by_pid));
+    if (!by_pid && processes->count > 0) {
+        perror("realloc by_pid");
+        return -1;
     }
-    return NULL;
+
+    processes->by_pid = by_pid;
+    for (size_t i = 0; i < processes->count; ++i) {
+        processes->by_pid[i] = &processes->items[i];
+    }
+
+    qsort(processes->by_pid, processes->count, sizeof(*processes->by_pid),
+          compare_children);
+    return 0;
+}
+
+Process *find_process(const ProcessList *processes, pid_t pid) {
+    /* TODO: 按 pid 查找进程。 */
+    if (!processes->by_pid || processes->count == 0) {
+        for (size_t i = 0; i < processes->count; ++i) {
+            if (processes->items[i].pid == pid) {
+                return &processes->items[i];
+            }
+        }
+        return NULL;
+    }
+
+    Process key = {.pid = pid};
+    Process *key_ptr = &key;
+    Process **found =
+        bsearch(&key_ptr, processes->by_pid, processes->count,
+                sizeof(*processes->by_pid), compare_children);
+    return found ? *found : NULL;
 }
 
 int build_tree(ProcessList *processes) {
@@ -166,12 +227,6 @@ int build_tree(ProcessList *processes) {
     return 0;
 }
 
-int compare_children(const void *a, const void *b) {
-    const Process *pa = *(const Process **)a;
-    const Process *pb = *(const Process **)b;
-    return (pa->pid > pb->pid) - (pa->pid < pb->pid);
-}
-
 void sort_children(ProcessList *processes) {
     /* TODO: 对每个进程的 children 按 pid 排序。 */
     for (size_t i = 0; i < processes->count; ++i) {
@@ -183,15 +238,30 @@ void sort_children(ProcessList *processes) {
     }
 }
 
-Process *find_root(ProcessList *processes) {
-    /* TODO: 找到进程树的打印起点。 */
+void print_forest(const ProcessList *processes, const Options *options) {
+    Process **roots = malloc(processes->count * sizeof(*roots));
+    if (!roots && processes->count > 0) {
+        perror("malloc roots");
+        return;
+    }
+
+    size_t root_count = 0;
     for (size_t i = 0; i < processes->count; ++i) {
         Process *proc = &processes->items[i];
         if (proc->ppid == 0 || find_process(processes, proc->ppid) == NULL) {
-            return proc;
+            roots[root_count++] = proc;
         }
     }
-    return NULL;
+
+    if (options->numeric_sort && root_count > 1) {
+        qsort(roots, root_count, sizeof(*roots), compare_children);
+    }
+
+    for (size_t i = 0; i < root_count; ++i) {
+        print_tree(roots[i], options, 0);
+    }
+
+    free(roots);
 }
 
 void print_tree(const Process *root, const Options *options, int depth) {
@@ -213,34 +283,66 @@ void free_processes(ProcessList *processes) {
         free(processes->items[i].children);
     }
     free(processes->items);
+    free(processes->by_pid);
     processes->items = NULL;
+    processes->by_pid = NULL;
     processes->count = 0;
     processes->capacity = 0;
 }
 
-static int read_stat(pid_t pid, StatInfo *stat_info) {
+static int read_status(pid_t pid, StatInfo *stat_info) {
     char path[64];
-    snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+    snprintf(path, sizeof(path), "/proc/%d/status", pid);
     FILE *f = fopen(path, "r");
-    if (!f)
-        return -1;
-    char line[4096];
-    if (!fgets(line, sizeof(line), f)) {
-        fclose(f);
+    if (!f) {
         return -1;
     }
-    fclose(f);
 
-    int id, ppid;
-    char comm[256], state;
-    if (sscanf(line, "%d (%255[^)]) %c %d", &id, comm, &state, &ppid) != 4)
-        return -1;
-    stat_info->pid = (pid_t)id;
-    strncpy(stat_info->comm, comm, COMM_LEN);
-    stat_info->comm[COMM_LEN - 1] = 0;
-    stat_info->state = state;
-    stat_info->ppid = (pid_t)ppid;
-    return 0;
+    stat_info->pid = pid;
+    stat_info->comm[0] = '\0';
+    stat_info->state = '\0';
+    stat_info->ppid = 0;
+
+    bool have_name = false;
+    bool have_ppid = false;
+    char line[4096];
+
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "Name:", 5) == 0) {
+            char *value = line + 5;
+            if (*value == '\t' || *value == ' ') {
+                value++;
+            }
+            value[strcspn(value, "\n")] = '\0';
+            strncpy(stat_info->comm, value, COMM_LEN);
+            stat_info->comm[COMM_LEN - 1] = '\0';
+            have_name = true;
+        } else if (strncmp(line, "State:", 6) == 0) {
+            char *value = line + 6;
+            if (*value == '\t' || *value == ' ') {
+                value++;
+            }
+            stat_info->state = *value;
+        } else if (strncmp(line, "PPid:", 5) == 0) {
+            char *value = line + 5;
+            if (*value == '\t' || *value == ' ') {
+                value++;
+            }
+
+            char *end;
+            long ppid = strtol(value, &end, 10);
+            if (end == value) {
+                fclose(f);
+                return -1;
+            }
+
+            stat_info->ppid = (pid_t)ppid;
+            have_ppid = true;
+        }
+    }
+
+    fclose(f);
+    return (have_name && have_ppid) ? 0 : -1;
 }
 
 int main(int argc, char *argv[]) {
@@ -249,38 +351,26 @@ int main(int argc, char *argv[]) {
 
     ProcessList processes = {0};
 
-    DIR *d = opendir("/proc");
-    if (!d) {
-        perror("opendir /proc");
+    if (collect_processes(&processes) < 0) {
+        free_processes(&processes);
         return -1;
     }
 
-    struct dirent *de;
-    while ((de = readdir(d)) != NULL) {
-        if (!isdigit((unsigned char)de->d_name[0]))
-            continue;
-        pid_t pid = (pid_t)atoi(de->d_name);
-        StatInfo stat_info = {0};
-        read_stat(pid, &stat_info);
-
-        add_process(&processes, &stat_info);
+    if (build_pid_index(&processes) < 0) {
+        free_processes(&processes);
+        return -1;
     }
 
-    build_tree(&processes);
+    if (build_tree(&processes) < 0) {
+        free_processes(&processes);
+        return -1;
+    }
+
     if (options.numeric_sort) {
         sort_children(&processes);
     }
 
-    Process *root = find_root(&processes);
-    if (!root) {
-        fprintf(stderr, "No root process found.\n");
-        closedir(d);
-        free_processes(&processes);
-        return -1;
-    } else {
-        print_tree(root, &options, 0);
-    }
-
-    closedir(d);
+    print_forest(&processes, &options);
+    free_processes(&processes);
     return 0;
 }
