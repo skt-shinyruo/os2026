@@ -177,7 +177,6 @@ int main(int argc, char *argv[]) {
 
     close(pipefd[1]);
     dup2(pipefd[0], STDIN_FILENO);
-    close(pipefd[0]);
 
     FILE *in = fdopen(pipefd[0], "r");
     char line[4096];
@@ -205,6 +204,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    close(pipefd[0]);
 
     return 0;
 }
