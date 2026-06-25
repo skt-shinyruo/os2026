@@ -20,6 +20,7 @@
 
 #define MAX_SYSCALLS 1024
 #define TOP_N 5
+#define REPORT_INTERVAL_MS 100
 
 typedef struct {
     char name[64];
@@ -103,6 +104,10 @@ static long diff_ms(const struct timespec *start, const struct timespec *end) {
     return seconds * 1000 + nanoseconds / 1000000;
 }
 
+bool should_print_report(long elapsed_ms, bool dirty) {
+    return dirty && elapsed_ms >= REPORT_INTERVAL_MS;
+}
+
 int compare_ratio(const void *a, const void *b) {
     const syscall_stat *sa = a;
     const syscall_stat *sb = b;
@@ -110,8 +115,7 @@ int compare_ratio(const void *a, const void *b) {
 }
 
 void print_top_syscalls(syscall_stats *stats, int n) {
-    if (stats->count == 0) {
-        printf("No syscalls recorded yet.\n");
+    if (stats->count == 0 || stats->total_time <= 0) {
         return;
     }
 
@@ -123,14 +127,17 @@ void print_top_syscalls(syscall_stats *stats, int n) {
     // qsort
     qsort(stats->stats, stats->count, sizeof(syscall_stat), compare_ratio);
 
-    // print top n
-    printf("Top %d syscalls by time ratio:\n", n);
     for (int i = 0; i < n && i < stats->count; i++) {
         const char *syscall_name = stats->stats[i].name;
-        double ratio = stats->stats[i].ratio;
+        int ratio = (int)(stats->stats[i].ratio + 0.5);
 
-        printf("%s (%.2f%%)\n", syscall_name, ratio);
+        printf("%s (%d%%)\n", syscall_name, ratio);
     }
+
+    for (int i = 0; i < 80; i++) {
+        putchar('\0');
+    }
+    fflush(stdout);
 }
 
 int main(int argc, char *argv[]) {
@@ -157,10 +164,6 @@ int main(int argc, char *argv[]) {
         exec_argv[i + 1] = argv[i];
     }
     exec_argv[argc + 1] = NULL;
-
-    for (int i = 0; i < argc + 2; i++) {
-        printf("exec_argv[%d]: %s\n", i, exec_argv[i]);
-    }
 
     int pipefd[2];
     if (pipe(pipefd) == -1) {
@@ -192,6 +195,7 @@ int main(int argc, char *argv[]) {
     char line[4096];
 
     syscall_stats stats = {0};
+    bool stats_dirty = false;
 
     struct timespec last_print;
     clock_gettime(CLOCK_MONOTONIC, &last_print);
@@ -203,20 +207,24 @@ int main(int argc, char *argv[]) {
 
         if (parse_strace_line(line, syscall_stat.name, &syscall_stat.time) ==
             0) {
-            // printf("syscall: %s, time: %f\n", syscall_stat.name,
-            //        syscall_stat.time);
             add_syscall(&stats, syscall_stat.name, syscall_stat.time);
+            stats_dirty = true;
 
             struct timespec now;
             clock_gettime(CLOCK_MONOTONIC, &now);
-            if (diff_ms(&last_print, &now) >= 1000) {
+            if (should_print_report(diff_ms(&last_print, &now), stats_dirty)) {
                 print_top_syscalls(&stats, TOP_N);
                 last_print = now;
+                stats_dirty = false;
             }
         }
     }
 
     fclose(in);
+
+    if (stats_dirty) {
+        print_top_syscalls(&stats, TOP_N);
+    }
 
     int status;
     while (waitpid(pid, &status, 0) == -1) {
@@ -231,7 +239,7 @@ int main(int argc, char *argv[]) {
         return WEXITSTATUS(status);
     }
     if (WIFSIGNALED(status)) {
-        128 + WTERMSIG(status);
+        return 128 + WTERMSIG(status);
     }
 
     return 0;
