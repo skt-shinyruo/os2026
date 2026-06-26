@@ -192,10 +192,10 @@ bool evaluate_expression(const char *expression, int *result) {
 }
 
 int main() {
+    printf("Enter a function definition or expression (or 'exit' to quit):\n");
     while (true) {
         char input[256];
-        printf(
-            "Enter a function definition or expression (or 'exit' to quit):\n");
+
         if (!fgets(input, sizeof(input), stdin)) {
             break; // EOF or error
         }
