@@ -106,6 +106,11 @@ bool compile_and_load_function(const char *function_def) {
         return false;
     }
 
+    extract_function_name(function_def, defined_functions[defined_count],
+                          sizeof(defined_functions[defined_count]));
+    defined_functions[defined_count][sizeof(defined_functions[defined_count]) - 1] = '\0';
+    defined_count++;
+
     void *handle = dlopen(func_so_path, RTLD_NOW | RTLD_GLOBAL);
     if (!handle) {
         return false;
