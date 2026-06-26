@@ -51,11 +51,12 @@ bool evaluate_expression(const char *expression, int *result) {
 
     // dlopen() 加载
     void *handle = dlopen(wrapper_so_path, RTLD_NOW | RTLD_GLOBAL);
+    printf("handle: %p\n", handle);
     if (!handle) {
         return false;
     }
 
-    // dlsym() 找到 __expr_wrapper_7
+    // dlsym() 找到 __expr_wrapper_
     int (*wrapper_func)() = dlsym(handle, wrapper_name);
     if (!wrapper_func) {
         dlclose(handle);
