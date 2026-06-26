@@ -1,18 +1,85 @@
 #include <dlfcn.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 
 char *defined_functions[100];
 int defined_count;
 
 int counter = 0;
+static const char *temp_dir = "/tmp/crepl";
+
+static bool ensure_temp_dir(void) {
+    if (mkdir(temp_dir, 0755) == 0) {
+        return true;
+    }
+    return errno == EEXIST;
+}
+
+static bool make_generated_paths(const char *prefix, int id,
+                                 char *c_path, size_t c_path_size,
+                                 char *so_path, size_t so_path_size) {
+    int c_len = snprintf(c_path, c_path_size, "%s/%s_%d.c", temp_dir, prefix, id);
+    int so_len = snprintf(so_path, so_path_size, "%s/%s_%d.so", temp_dir, prefix, id);
+
+    if (c_len < 0 || c_len >= (int)c_path_size) {
+        return false;
+    }
+    if (so_len < 0 || so_len >= (int)so_path_size) {
+        return false;
+    }
+    return true;
+}
 
 // Compile a function definition and load it
 bool compile_and_load_function(const char *function_def) {
+    int id = counter++;
+    char func_c_path[PATH_MAX];
+    char func_so_path[PATH_MAX];
 
-    return false;
+    if (!ensure_temp_dir()) {
+        return false;
+    }
+    if (!make_generated_paths("temp_func", id,
+                              func_c_path, sizeof(func_c_path),
+                              func_so_path, sizeof(func_so_path))) {
+        return false;
+    }
+
+    FILE *temp_c = fopen(func_c_path, "w");
+    if (temp_c == NULL) {
+        return false;
+    }
+    fprintf(temp_c, "%s\n", function_def);
+    fclose(temp_c);
+
+    int pid = fork();
+    if (pid == 0) {
+        execlp("gcc", "gcc", "-shared", "-fPIC", func_c_path, "-o",
+               func_so_path, NULL);
+        exit(1);
+    }
+
+    int status;
+    waitpid(pid, &status, 0);
+    if (status != 0) {
+        return false;
+    }
+
+    void *handle = dlopen(func_so_path, RTLD_NOW | RTLD_GLOBAL);
+    if (!handle) {
+        return false;
+    }
+    return true;
+
 }
 
 // Evaluate an expression
@@ -20,15 +87,23 @@ bool evaluate_expression(const char *expression, int *result) {
     // 生成一个唯一的 wrapper 名字，比如 __expr_wrapper_7
     int id = counter++;
     char wrapper_name[64];
-    char wrapper_c_path[128];
-    char wrapper_so_path[128];
+    char wrapper_c_path[PATH_MAX];
+    char wrapper_so_path[PATH_MAX];
     snprintf(wrapper_name, sizeof(wrapper_name), "__expr_wrapper_%d", id);
-    snprintf(wrapper_c_path, sizeof(wrapper_c_path), "temp_expr_%d.c", id);
-    snprintf(wrapper_so_path, sizeof(wrapper_so_path), "temp_expr_%d.so", id);
+    if (!ensure_temp_dir()) {
+        return false;
+    }
+    if (!make_generated_paths("temp_expr", id,
+                              wrapper_c_path, sizeof(wrapper_c_path),
+                              wrapper_so_path, sizeof(wrapper_so_path))) {
+        return false;
+    }
 
     // 生成临时 .c
-    FILE *temp_c = tmpfile();
-    temp_c = fopen(wrapper_c_path, "w");
+    FILE *temp_c = fopen(wrapper_c_path, "w");
+    if (temp_c == NULL) {
+        return false;
+    }
     fprintf(temp_c, "int %s() { return %s; }\n", wrapper_name, expression);
     fclose(temp_c);
 
@@ -59,6 +134,7 @@ bool evaluate_expression(const char *expression, int *result) {
     // dlsym() 找到 __expr_wrapper_
     int (*wrapper_func)() = dlsym(handle, wrapper_name);
     if (!wrapper_func) {
+        printf("dlsym failed: %s\n", dlerror());
         dlclose(handle);
         return false;
     }

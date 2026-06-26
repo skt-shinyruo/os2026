@@ -3,10 +3,60 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <dirent.h>
 
 // Feel free to rename them.
 bool compile_and_load_function(const char* function_def);
 bool evaluate_expression(const char* expression, int* result);
+
+static bool dir_contains_suffix(const char *path, const char *suffix) {
+    DIR *dir = opendir(path);
+    if (dir == NULL) {
+        return false;
+    }
+
+    struct dirent *entry;
+    size_t suffix_len = strlen(suffix);
+    bool found = false;
+
+    while ((entry = readdir(dir)) != NULL) {
+        size_t name_len = strlen(entry->d_name);
+        if (name_len >= suffix_len &&
+            strcmp(entry->d_name + name_len - suffix_len, suffix) == 0) {
+            found = true;
+            break;
+        }
+    }
+
+    closedir(dir);
+    return found;
+}
+
+static bool dir_contains_fragment_and_suffix(const char *path,
+                                             const char *fragment,
+                                             const char *suffix) {
+    DIR *dir = opendir(path);
+    if (dir == NULL) {
+        return false;
+    }
+
+    struct dirent *entry;
+    size_t suffix_len = strlen(suffix);
+    bool found = false;
+
+    while ((entry = readdir(dir)) != NULL) {
+        size_t name_len = strlen(entry->d_name);
+        if (strstr(entry->d_name, fragment) != NULL &&
+            name_len >= suffix_len &&
+            strcmp(entry->d_name + name_len - suffix_len, suffix) == 0) {
+            found = true;
+            break;
+        }
+    }
+
+    closedir(dir);
+    return found;
+}
 
 UnitTest(test_compile_valid_function) {
     bool result = compile_and_load_function("int test_func() { return 42; }");
@@ -67,4 +117,30 @@ UnitTest(test_evaluate_syntax_error) {
     int result_value;
     bool result = evaluate_expression("21 +", &result_value);
     tk_assert(result == false, "Should fail on syntax error");
+}
+
+UnitTest(test_evaluate_temp_files_live_in_tmp_crepl) {
+    int result_value;
+    bool result = evaluate_expression("40 + 2", &result_value);
+
+    tk_assert(result == true, "Should evaluate arithmetic expression");
+    tk_assert(result_value == 42, "Result should be 42");
+    tk_assert(access("/tmp/crepl", F_OK) == 0,
+              "Temporary directory /tmp/crepl should exist");
+    tk_assert(dir_contains_suffix("/tmp/crepl", ".c"),
+              "Temporary C source should be created under /tmp/crepl");
+    tk_assert(dir_contains_suffix("/tmp/crepl", ".so"),
+              "Temporary shared object should be created under /tmp/crepl");
+}
+
+UnitTest(test_compile_temp_files_live_in_tmp_crepl) {
+    bool result = compile_and_load_function("int temp_dir_func() { return 7; }");
+
+    tk_assert(result == true, "Should compile a valid function");
+    tk_assert(access("/tmp/crepl", F_OK) == 0,
+              "Temporary directory /tmp/crepl should exist");
+    tk_assert(dir_contains_fragment_and_suffix("/tmp/crepl", "temp_func_", ".c"),
+              "Function source should be created under /tmp/crepl");
+    tk_assert(dir_contains_fragment_and_suffix("/tmp/crepl", "temp_func_", ".so"),
+              "Function shared object should be created under /tmp/crepl");
 }
