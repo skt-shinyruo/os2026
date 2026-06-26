@@ -89,7 +89,9 @@ bool compile_and_load_function(const char *function_def) {
     if (temp_c == NULL) {
         return false;
     }
-
+    for (int i = 0; i < defined_count; i++) {
+        fprintf(temp_c, "int %s();\n", defined_functions[i]);
+    }
     fprintf(temp_c, "%s\n", function_def);
     fclose(temp_c);
 
@@ -106,15 +108,18 @@ bool compile_and_load_function(const char *function_def) {
         return false;
     }
 
-    extract_function_name(function_def, defined_functions[defined_count],
-                          sizeof(defined_functions[defined_count]));
-    defined_functions[defined_count][sizeof(defined_functions[defined_count]) - 1] = '\0';
-    defined_count++;
-
     void *handle = dlopen(func_so_path, RTLD_NOW | RTLD_GLOBAL);
     if (!handle) {
         return false;
     }
+
+    char func_name[64];
+    if (!extract_function_name(function_def, func_name, sizeof(func_name))) {
+        dlclose(handle);
+        return false;
+    }
+    defined_functions[defined_count++] = strdup(func_name);
+
     return true;
 }
 
