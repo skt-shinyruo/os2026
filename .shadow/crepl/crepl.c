@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE
 #include <ctype.h>
 #include <dlfcn.h>
 #include <errno.h>
@@ -170,7 +171,6 @@ bool evaluate_expression(const char *expression, int *result) {
 
     // dlopen() 加载
     void *handle = dlopen(wrapper_so_path, RTLD_NOW | RTLD_GLOBAL);
-    printf("handle: %p\n", handle);
     if (!handle) {
         return false;
     }
