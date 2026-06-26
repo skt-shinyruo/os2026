@@ -89,9 +89,7 @@ bool compile_and_load_function(const char *function_def) {
     if (temp_c == NULL) {
         return false;
     }
-    for (int i = 0; i < defined_count; i++) {
-        fprintf(temp_c, "int %s();\n", defined_functions[i]);
-    }
+
     fprintf(temp_c, "%s\n", function_def);
     fclose(temp_c);
 
@@ -136,6 +134,9 @@ bool evaluate_expression(const char *expression, int *result) {
     FILE *temp_c = fopen(wrapper_c_path, "w");
     if (temp_c == NULL) {
         return false;
+    }
+    for (int i = 0; i < defined_count; i++) {
+        fprintf(temp_c, "int %s();\n", defined_functions[i]);
     }
     fprintf(temp_c, "int %s() { return %s; }\n", wrapper_name, expression);
     fclose(temp_c);
