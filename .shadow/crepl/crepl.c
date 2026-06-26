@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <limits.h>
@@ -9,7 +10,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
 
 char *defined_functions[100];
 int defined_count;
@@ -24,11 +24,13 @@ static bool ensure_temp_dir(void) {
     return errno == EEXIST;
 }
 
-static bool make_generated_paths(const char *prefix, int id,
-                                 char *c_path, size_t c_path_size,
-                                 char *so_path, size_t so_path_size) {
-    int c_len = snprintf(c_path, c_path_size, "%s/%s_%d.c", temp_dir, prefix, id);
-    int so_len = snprintf(so_path, so_path_size, "%s/%s_%d.so", temp_dir, prefix, id);
+static bool make_generated_paths(const char *prefix, int id, char *c_path,
+                                 size_t c_path_size, char *so_path,
+                                 size_t so_path_size) {
+    int c_len =
+        snprintf(c_path, c_path_size, "%s/%s_%d.c", temp_dir, prefix, id);
+    int so_len =
+        snprintf(so_path, so_path_size, "%s/%s_%d.so", temp_dir, prefix, id);
 
     if (c_len < 0 || c_len >= (int)c_path_size) {
         return false;
@@ -37,6 +39,36 @@ static bool make_generated_paths(const char *prefix, int id,
         return false;
     }
     return true;
+}
+
+static bool extract_function_name(const char *src, char *name, size_t size) {
+    const char *p = src;
+    size_t i = 0;
+
+    while (isspace((unsigned char)*p))
+        p++;
+
+    if (strncmp(p, "int", 3) != 0) {
+        return false;
+    }
+    p += 3;
+
+    while (isspace((unsigned char)*p))
+        p++;
+
+    if (!(isalpha((unsigned char)*p) || *p == '_')) {
+        return false;
+    }
+
+    while ((isalnum((unsigned char)*p) || *p == '_') && i + 1 < size) {
+        name[i++] = *p++;
+    }
+    name[i] = '\0';
+
+    while (isspace((unsigned char)*p))
+        p++;
+
+    return *p == '(';
 }
 
 // Compile a function definition and load it
@@ -48,8 +80,7 @@ bool compile_and_load_function(const char *function_def) {
     if (!ensure_temp_dir()) {
         return false;
     }
-    if (!make_generated_paths("temp_func", id,
-                              func_c_path, sizeof(func_c_path),
+    if (!make_generated_paths("temp_func", id, func_c_path, sizeof(func_c_path),
                               func_so_path, sizeof(func_so_path))) {
         return false;
     }
@@ -57,6 +88,9 @@ bool compile_and_load_function(const char *function_def) {
     FILE *temp_c = fopen(func_c_path, "w");
     if (temp_c == NULL) {
         return false;
+    }
+    for (int i = 0; i < defined_count; i++) {
+        fprintf(temp_c, "int %s();\n", defined_functions[i]);
     }
     fprintf(temp_c, "%s\n", function_def);
     fclose(temp_c);
@@ -79,7 +113,6 @@ bool compile_and_load_function(const char *function_def) {
         return false;
     }
     return true;
-
 }
 
 // Evaluate an expression
@@ -93,9 +126,9 @@ bool evaluate_expression(const char *expression, int *result) {
     if (!ensure_temp_dir()) {
         return false;
     }
-    if (!make_generated_paths("temp_expr", id,
-                              wrapper_c_path, sizeof(wrapper_c_path),
-                              wrapper_so_path, sizeof(wrapper_so_path))) {
+    if (!make_generated_paths("temp_expr", id, wrapper_c_path,
+                              sizeof(wrapper_c_path), wrapper_so_path,
+                              sizeof(wrapper_so_path))) {
         return false;
     }
 
