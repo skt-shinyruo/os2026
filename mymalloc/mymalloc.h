@@ -1,12 +1,15 @@
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdatomic.h>
+
+#define ALIGNMENT 8
+#define ALIGN(size) (((size) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1))
 
 typedef struct {
     atomic_int status;
 } spinlock_t;
 
-#define LOCKED   1
+#define LOCKED 1
 #define UNLOCKED 0
 
 static inline void spin_lock(spinlock_t *lock) {
@@ -19,6 +22,14 @@ static inline void spin_lock(spinlock_t *lock) {
 static inline void spin_unlock(spinlock_t *lock) {
     atomic_store_explicit(&lock->status, UNLOCKED, memory_order_release);
 }
+
+typedef struct block_header {
+    size_t size;
+    struct block_header *next;
+    int free;
+} block_header_t;
+
+#define HEADER_SIZE ALIGN(sizeof(block_header_t))
 
 void *mymalloc(size_t size);
 void myfree(void *ptr);
