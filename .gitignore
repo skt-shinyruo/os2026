@@ -6,3 +6,5 @@
 !*.md
 !Makefile
 !*.py
+!.vscode/launch.json
+!.vscode/tasks.json

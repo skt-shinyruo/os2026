@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build mymalloc debug",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "-I.",
+        "-I../testkit",
+        "-Og",
+        "-g3",
+        "-Wall",
+        "-std=gnu2x",
+        "-pthread",
+        "./mymalloc.c",
+        "./start.c",
+        "./tests/tests-trivial.c",
+        "../testkit/testkit.c",
+        "./tests/main.c",
+        "-o",
+        "/tmp/mymalloc-tests-debug"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mymalloc"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
