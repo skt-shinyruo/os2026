@@ -13,9 +13,12 @@ check:
 	    -o malloc-check *.c && \
 	        rm -f malloc-check
 
-.PHONY: test
+.PHONY: test test-stress
 test: $(LOCAL_TEST_BIN)
 	env TK_VERBOSE=1 $(LOCAL_TEST_BIN)
+
+test-stress: $(LOCAL_TEST_BIN)
+	env TK_VERBOSE=1 MYMALLOC_TEST_STRESS=1 $(LOCAL_TEST_BIN)
 
 $(LOCAL_TEST_BIN): mymalloc.c start.c tests/tests-trivial.c tests/main.c \
 		mymalloc.h ../testkit/testkit.c ../testkit/testkit.h
