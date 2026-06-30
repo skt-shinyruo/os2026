@@ -263,15 +263,3 @@
 - `insert_free_block`: 把空闲块挂回空闲结构
 
 第一版先用单 arena 加一把锁，把正确性做扎实；后面如果需要再考虑多 arena、按线程分流、按 size class 分流这些并发优化。
-
-## 本地怎么跑测试
-
-默认跑 basic + OJ-risk 测试：
-
-```bash
-make test
-```
-
-这个命令会进入 `mymalloc/`，编译本地测试二进制到 `/tmp/mymalloc-tests`，并用 `TK_VERBOSE=1` 运行默认测试。
-
-`mymalloc/tests/main.c` 只保留一个空的 `main` 入口，供 `make test` 链接使用。
