@@ -274,10 +274,4 @@ make test
 
 这个命令会进入 `mymalloc/`，编译本地测试二进制到 `/tmp/mymalloc-tests`，并用 `TK_VERBOSE=1` 运行默认测试。
 
-提交前可以额外跑 stress 测试：
-
-```bash
-make -C mymalloc test-stress
-```
-
-这个命令会设置 `MYMALLOC_TEST_STRESS=1`，在默认测试之外额外注册并发、跨线程释放和长时间 churn 压力测试。
+`mymalloc/tests/main.c` 只保留一个空的 `main` 入口，供 `make test` 链接使用。

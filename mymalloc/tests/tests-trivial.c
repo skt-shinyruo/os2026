@@ -5,40 +5,12 @@
 #include <pthread.h>
 #include <sched.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <testkit.h>
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define PAGE_SIZE 4096u
 #define FOOTPRINT_SLACK_PAGES 8u
 #define MAX_TRACKED_PAGES 4096u
-#define MYMALLOC_STRESS_ENV "MYMALLOC_TEST_STRESS"
-
-static bool stress_tests_enabled(void) {
-    const char *value = getenv(MYMALLOC_STRESS_ENV);
-    return value != NULL && value[0] != '\0' && value[0] != '0';
-}
-
-#define StressSystemTest(name, argv_, ...)                                      \
-    StressTestCase(name, struct tk_result *result, stest,                      \
-                   .argc = sizeof(argv_) / sizeof(void *),                     \
-                   .argv = (const char **)argv_, __VA_ARGS__)
-
-#define StressTestCase(name_, body_arg, test, ...)                             \
-    static void TK_UNIQUE_NAME(name_)(body_arg);                               \
-    __attribute__((constructor)) void TK_UNIQUE_NAME(reg##name_)() {           \
-        void tk_add_test(struct tk_testcase t);                                \
-        if (stress_tests_enabled()) {                                          \
-            tk_add_test((struct tk_testcase){                                  \
-                .enabled = 1,                                                  \
-                .name = #name_,                                                \
-                .loc = __FILE__ ":" TK_TOSTRING(__LINE__),                    \
-                .test = TK_UNIQUE_NAME(name_),                                 \
-                __VA_ARGS__                                                    \
-            });                                                               \
-        }                                                                     \
-    }                                                                         \
-    static void TK_UNIQUE_NAME(name_)(body_arg)
 
 typedef struct {
     unsigned char *ptr;
@@ -543,8 +515,10 @@ SystemTest(oversized_requests_fail_cleanly, ((const char *[]){})) {
 
     tk_assert(mymalloc(SIZE_MAX) == NULL,
               "mymalloc(SIZE_MAX) should return NULL");
-    tk_assert(mymalloc(SIZE_MAX - HEADER_SIZE) == NULL,
-              "mymalloc(SIZE_MAX - HEADER_SIZE) should return NULL");
+    tk_assert(mymalloc(SIZE_MAX - 1) == NULL,
+              "mymalloc(SIZE_MAX - 1) should return NULL");
+    tk_assert(mymalloc(SIZE_MAX - PAGE_SIZE + 1) == NULL,
+              "mymalloc(SIZE_MAX - PAGE_SIZE + 1) should return NULL");
 
     assert_pattern(&guard, "oversized_requests_fail_cleanly");
 
@@ -645,7 +619,7 @@ SystemTest(deterministic_slot_churn_mixed, ((const char *[]){})) {
     free_all_blocks(slots, SLOT_COUNT);
 }
 
-StressSystemTest(single_thread_tail_pressure, ((const char *[]){})) {
+SystemTest(single_thread_tail_pressure, ((const char *[]){})) {
     enum {
         PREFIX_COUNT = 1024,
         ITERATIONS = 120000,
@@ -698,7 +672,7 @@ static void *thread_tail_pressure(void *arg) {
     return NULL;
 }
 
-StressSystemTest(parallel_tail_pressure, ((const char *[]){})) {
+SystemTest(parallel_tail_pressure, ((const char *[]){})) {
     enum {
         THREAD_COUNT = 8,
     };
@@ -872,7 +846,7 @@ static void *thread_phase_pressure(void *arg) {
     return NULL;
 }
 
-StressSystemTest(parallel_phase_pressure, ((const char *[]){})) {
+SystemTest(parallel_phase_pressure, ((const char *[]){})) {
     enum { THREADS = 6 };
 
     pthread_barrier_t barrier;
@@ -979,7 +953,7 @@ static void *thread_shared_pool_reuse(void *arg) {
     return NULL;
 }
 
-StressSystemTest(parallel_shared_pool_reuse, ((const char *[]){})) {
+SystemTest(parallel_shared_pool_reuse, ((const char *[]){})) {
     pthread_barrier_t barrier;
     pthread_t threads[SHARED_POOL_THREADS];
     shared_pool_thread_ctx_t ctx[SHARED_POOL_THREADS];
@@ -1146,7 +1120,7 @@ static void *thread_cross_thread_transfer(void *arg) {
     return NULL;
 }
 
-StressSystemTest(cross_thread_free_and_reuse, ((const char *[]){})) {
+SystemTest(cross_thread_free_and_reuse, ((const char *[]){})) {
     pthread_t threads[TRANSFER_THREADS];
     cross_thread_transfer_ctx_t ctx[TRANSFER_THREADS];
     cross_thread_transfer_shared_t shared = {0};
@@ -1319,7 +1293,7 @@ static void assert_churn_threads_healthy(const churn_thread_ctx_t *ctx) {
                                    "concurrent_round_based_churn");
 }
 
-StressSystemTest(concurrent_round_based_churn, ((const char *[]){})) {
+SystemTest(concurrent_round_based_churn, ((const char *[]){})) {
     pthread_barrier_t barrier;
     pthread_t threads[CHURN_THREADS];
     churn_thread_ctx_t ctx[CHURN_THREADS];
