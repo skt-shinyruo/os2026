@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build mymalloc debug",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "mymalloc",
+                "CFLAGS=-I. -I../testkit -O0 -g3 -Wall -Wextra -std=gnu2x"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/mymalloc"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

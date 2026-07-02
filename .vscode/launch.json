@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug mymalloc main",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/mymalloc/mymalloc",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/mymalloc",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "build mymalloc debug"
+        }
+    ]
+}
