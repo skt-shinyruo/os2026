@@ -16,14 +16,14 @@ static inline size_t align(size_t size, size_t alignment) {
 chunk_header_t *create_new_chunk(size_t size) {
     size = align(size + CHUNK_HEADER_SIZE,
                  PAGE_SIZE * 1024); // 4MB
-
+    printf("create_new_chunk size: %zu\n", size);
     chunk_header_t *new_chunk_header = (chunk_header_t *)vmalloc(NULL, size);
     if (new_chunk_header == NULL) {
         return NULL;
     }
 
     block_header_t *first_block_header =
-        (block_header_t *)new_chunk_header + CHUNK_HEADER_SIZE;
+        (block_header_t *)((uintptr_t)new_chunk_header + CHUNK_HEADER_SIZE);
     first_block_header->block_size =
         size - CHUNK_HEADER_SIZE - BLOCK_HEADER_SIZE;
     first_block_header->is_free_block = 1;
@@ -49,6 +49,11 @@ void split_block(block_header_t *block_header, size_t size) {
     assert(block_header->block_size >= size);
 
     size_t next_size = block_header->block_size - size;
+
+    if (next_size < BLOCK_HEADER_SIZE) {
+        return;
+    }
+
     block_header_t *new_block_header =
         (block_header_t *)((uintptr_t)block_header + size);
     new_block_header->block_size = next_size;
@@ -61,12 +66,28 @@ void split_block(block_header_t *block_header, size_t size) {
     block_header->next_block_header = new_block_header;
 }
 
+block_header_t *find_free_block(size_t size) {
+    chunk_header_t *chunk_header = chunk_header_head;
+    while (chunk_header) {
+        block_header_t *current_block_header = chunk_header->first_block_header;
+        while (current_block_header) {
+            if (current_block_header->is_free_block &&
+                current_block_header->block_size >= size) {
+                return current_block_header; // 通过 return 直接退出
+            }
+            current_block_header = current_block_header->next_block_header;
+        }
+        chunk_header = chunk_header->next_chunk_header;
+    }
+    return NULL;
+}
+
 void *mymalloc(size_t size) {
 
     if (size <= 0) {
         return NULL;
     }
-
+    printf("mymalloc size: %zu\n", size);
     spin_lock(&big_lock);
     // malloc_count++;
 
@@ -74,19 +95,7 @@ void *mymalloc(size_t size) {
 
     chunk_header_t *chunk_header = chunk_header_head;
 
-    block_header_t *block_header = NULL;
-    while (chunk_header) {
-        block_header_t *current_block_header = chunk_header->first_block_header;
-        while (current_block_header) {
-            if (current_block_header->is_free_block &&
-                current_block_header->block_size >= size) {
-                block_header = current_block_header;
-                break;
-            }
-            current_block_header = current_block_header->next_block_header;
-        }
-        chunk_header = chunk_header->next_chunk_header;
-    }
+    block_header_t *block_header = find_free_block(size);
     if (block_header == NULL) {
         // 如果没有合适的chunk，创建新的chunk
         chunk_header_t *new_chunk_header = create_new_chunk(size);
@@ -98,6 +107,8 @@ void *mymalloc(size_t size) {
     }
 
     split_block(block_header, size);
+    printf("mymalloc block_header: %p, block_size: %zu\n", block_header,
+           block_header->block_size);
 
     spin_unlock(&big_lock);
 
@@ -111,6 +122,10 @@ void myfree(void *ptr) {
     spin_lock(&big_lock);
     block_header_t *block_header =
         (block_header_t *)((uintptr_t)ptr - BLOCK_HEADER_SIZE);
+    printf("myfree free block_header: %p, block_size: %zu\n", block_header,
+           block_header->block_size);
     block_header->is_free_block = 1;
+    printf("myfree free block_header: %p, block_size: %zu\n", block_header,
+           block_header->block_size);
     spin_unlock(&big_lock);
 }
