@@ -35,27 +35,35 @@ SystemTest(vmalloc, ((const char *[]){})) {
     vmfree(p2, 8192);
 }
 
-#define N 100000
-void T_malloc() {
+#define N 10000
+static void *T_malloc(void *arg) {
+    (void)arg;
+
     for (int i = 0; i < N; i++) {
-        mymalloc(0);
+        size_t size = (size_t)((i % 126) + 2);
+        unsigned char *p = mymalloc(size);
+        tk_assert(p != NULL, "mymalloc should not return NULL");
+        p[0] = (unsigned char)i;
+        p[size - 1] = (unsigned char)(i + 1);
+        tk_assert(p[0] == (unsigned char)i, "first byte should survive");
+        tk_assert(p[size - 1] == (unsigned char)(i + 1),
+                  "last byte should survive");
+        myfree(p);
     }
+
+    return NULL;
 }
 
-SystemTest(concurrent, ((const char *[]){})) {
-    // We don't need this malloc_count; you can safely remove this test case.
-    extern long malloc_count;
+UnitTest(concurrent) {
     pthread_t t1, t2, t3, t4;
 
-    pthread_create(&t1, NULL, (void *(*)(void *))T_malloc, NULL);
-    pthread_create(&t2, NULL, (void *(*)(void *))T_malloc, NULL);
-    pthread_create(&t3, NULL, (void *(*)(void *))T_malloc, NULL);
-    pthread_create(&t4, NULL, (void *(*)(void *))T_malloc, NULL);
+    pthread_create(&t1, NULL, T_malloc, NULL);
+    pthread_create(&t2, NULL, T_malloc, NULL);
+    pthread_create(&t3, NULL, T_malloc, NULL);
+    pthread_create(&t4, NULL, T_malloc, NULL);
     
     pthread_join(t1, NULL);
     pthread_join(t2, NULL);
     pthread_join(t3, NULL);
     pthread_join(t4, NULL);
-
-    tk_assert(malloc_count == 4 * N, "malloc_count should be 4N");
 }
